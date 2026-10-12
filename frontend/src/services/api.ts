@@ -6,9 +6,32 @@ import {
   TimelineItem
 } from '../types';
 
-const API_BASE = '/api';
+const rawBase = import.meta.env.VITE_API_URL?.trim();
+const API_BASE = rawBase
+  ? `${rawBase.replace(/\/+$/, '').replace(/\/api$/, '')}/api`
+  : '/api';
+
+/**
+ * Shared helper to resolve backend static-file URLs (e.g., /static/uploads or /static/samples).
+ * Uses VITE_API_URL when set (stripping any /api suffix), while falling back to relative paths
+ * to preserve localhost/dev-proxy behavior.
+ */
+export const getStaticUrl = (path: string): string => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  if (rawBase) {
+    const backendOrigin = rawBase.replace(/\/+$/, '').replace(/\/api$/, '');
+    return `${backendOrigin}${cleanPath}`;
+  }
+  return cleanPath;
+};
 
 export const api = {
+  // Static Assets & URLs
+  getStaticUrl,
+
   // Dashboard & Analytics
   async getDashboardStats(): Promise<DashboardStats> {
     const res = await fetch(`${API_BASE}/dashboard/stats`);
