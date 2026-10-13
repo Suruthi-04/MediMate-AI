@@ -4,9 +4,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import Base, engine, SessionLocal
@@ -28,13 +25,13 @@ from app.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize SQLite database tables
+    # Initialize database tables
     Base.metadata.create_all(bind=engine)
 
-    # Ensure sample PDF and image files exist
+    # Generate sample files
     generate_sample_files()
 
-    # Seed demo data if database is fresh
+    # Seed demo data if database is empty
     db = SessionLocal()
     try:
         patient_count = db.query(Patient).count()
@@ -46,20 +43,21 @@ async def lifespan(app: FastAPI):
     yield
 
 
+# FastAPI application
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description=(
-        "MediMate AI – Personal Health Copilot "
+        "MediMate AI - Personal Health Copilot "
         "for HacXLerate 2026 Round 1 Challenge 1"
     ),
     lifespan=lifespan,
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
-# CORS Configuration
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -68,45 +66,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static file mounts for previews
+# Static file mounts
 app.mount(
     "/static/uploads",
     StaticFiles(directory=str(settings.UPLOAD_DIR)),
     name="uploads",
 )
+
 app.mount(
     "/static/samples",
     StaticFiles(directory=str(settings.SAMPLE_DIR)),
     name="samples",
 )
 
-# Include API routers
-app.include_router(documents.router, prefix=settings.API_V1_STR)
-app.include_router(fhir_crud.router, prefix=settings.API_V1_STR)
-app.include_router(timeline.router, prefix=settings.API_V1_STR)
-app.include_router(ai_summary.router, prefix=settings.API_V1_STR)
-app.include_router(settings_router.router, prefix=settings.API_V1_STR)
-
-
-# Manual OpenAPI schema endpoint
-@app.get("/openapi.json", include_in_schema=False)
-def custom_openapi():
-    schema = get_openapi(
-        title=settings.PROJECT_NAME,
-        version=settings.VERSION,
-        description="MediMate AI Personal Health Copilot API",
-        routes=app.routes,
-    )
-    return JSONResponse(content=schema)
-
-
-# Manual Swagger UI endpoint
-@app.get("/docs", include_in_schema=False)
-def custom_swagger_ui():
-    return get_swagger_ui_html(
-        openapi_url="/openapi.json",
-        title=f"{settings.PROJECT_NAME} - API Docs",
-    )
+# API routers
+app.include_router(
+    documents.router,
+    prefix=settings.API_V1_STR,
+)
+app.include_router(
+    fhir_crud.router,
+    prefix=settings.API_V1_STR,
+)
+app.include_router(
+    timeline.router,
+    prefix=settings.API_V1_STR,
+)
+app.include_router(
+    ai_summary.router,
+    prefix=settings.API_V1_STR,
+)
+app.include_router(
+    settings_router.router,
+    prefix=settings.API_V1_STR,
+)
 
 
 # Root endpoint
@@ -115,11 +108,12 @@ def root():
     return {
         "project": settings.PROJECT_NAME,
         "challenge": (
-            "HacXLerate 2026 Round 1 - "
-            "Challenge 1: AI-Powered Personal Health Copilot"
+            "HacXLerate 2026 Round 1 - Challenge 1: "
+            "AI-Powered Personal Health Copilot"
         ),
         "status": "online",
         "docs_url": "/docs",
+        "openapi_url": "/openapi.json",
     }
 
 
