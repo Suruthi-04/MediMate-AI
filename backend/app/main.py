@@ -30,11 +30,14 @@ async def lifespan(app: FastAPI):
 
     yield
 
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="MediMate AI – Personal Health Copilot for HacXLerate 2026 Round 1 Challenge 1",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs",
+    openapi_url="/openapi.json",
 )
 
 # CORS Configuration
